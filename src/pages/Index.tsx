@@ -1,11 +1,127 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "sonner";
+import { LogIn, UserPlus } from "lucide-react";
 
 const Index = () => {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      // TODO: Implementar lógica de login
+      toast.success("¡Bienvenido de vuelta!");
+    } catch (error) {
+      toast.error("Error al iniciar sesión");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      // TODO: Implementar lógica de registro
+      toast.success("¡Registro exitoso!");
+    } catch (error) {
+      toast.error("Error al registrarse");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
+    <div className="auth-container">
+      <div className="auth-card slide-in">
+        <h1 className="text-3xl font-bold text-center text-gray-800 mb-2">
+          Evaluaciones 360°
+        </h1>
+        <p className="text-center text-gray-600 mb-6">
+          Plataforma profesional de evaluación y retroalimentación
+        </p>
+        
+        <Tabs defaultValue="login" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsTrigger value="login">Iniciar Sesión</TabsTrigger>
+            <TabsTrigger value="register">Registrarse</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="login">
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Correo Electrónico</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="correo@ejemplo.com"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Contraseña</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isLoading}
+              >
+                <LogIn className="mr-2 h-4 w-4" />
+                Iniciar Sesión
+              </Button>
+            </form>
+          </TabsContent>
+
+          <TabsContent value="register">
+            <form onSubmit={handleRegister} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="register-name">Nombre Completo</Label>
+                <Input
+                  id="register-name"
+                  placeholder="Juan Pérez"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="register-email">Correo Electrónico</Label>
+                <Input
+                  id="register-email"
+                  type="email"
+                  placeholder="correo@ejemplo.com"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="register-password">Contraseña</Label>
+                <Input
+                  id="register-password"
+                  type="password"
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isLoading}
+              >
+                <UserPlus className="mr-2 h-4 w-4" />
+                Registrarse
+              </Button>
+            </form>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
