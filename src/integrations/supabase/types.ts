@@ -9,6 +9,65 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      evaluation_responses: {
+        Row: {
+          created_at: string
+          evaluation_id: string
+          id: string
+          question_text: string
+          response: string
+          score: number
+        }
+        Insert: {
+          created_at?: string
+          evaluation_id: string
+          id?: string
+          question_text: string
+          response: string
+          score: number
+        }
+        Update: {
+          created_at?: string
+          evaluation_id?: string
+          id?: string
+          question_text?: string
+          response?: string
+          score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evaluation_responses_evaluation_id_fkey"
+            columns: ["evaluation_id"]
+            isOneToOne: false
+            referencedRelation: "evaluations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evaluations: {
+        Row: {
+          created_at: string
+          evaluated_id: string
+          evaluator_id: string
+          id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          evaluated_id: string
+          evaluator_id: string
+          id?: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          evaluated_id?: string
+          evaluator_id?: string
+          id?: string
+          status?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
