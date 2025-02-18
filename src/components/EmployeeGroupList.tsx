@@ -1,4 +1,5 @@
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -11,6 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Users } from "lucide-react";
+import { ManageGroupMembersDialog } from "./ManageGroupMembersDialog";
 
 interface EmployeeGroup {
   id: string;
@@ -20,6 +22,8 @@ interface EmployeeGroup {
 }
 
 export const EmployeeGroupList = () => {
+  const [selectedGroup, setSelectedGroup] = useState<{ id: string; name: string } | null>(null);
+
   const { data: groups, isLoading } = useQuery({
     queryKey: ['employee_groups'],
     queryFn: async () => {
@@ -47,36 +51,46 @@ export const EmployeeGroupList = () => {
   if (isLoading) return <div>Cargando grupos...</div>;
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Nombre del Grupo</TableHead>
-          <TableHead>Miembros</TableHead>
-          <TableHead>Fecha de Creación</TableHead>
-          <TableHead className="text-right">Acciones</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {groups?.map((group) => (
-          <TableRow key={group.id}>
-            <TableCell>{group.name}</TableCell>
-            <TableCell>{group.member_count.count} miembros</TableCell>
-            <TableCell>{new Date(group.created_at).toLocaleDateString()}</TableCell>
-            <TableCell className="text-right">
-              <Button
-                variant="outline"
-                size="sm"
-                // Aquí después implementaremos la gestión de miembros
-                onClick={() => {}}
-                className="mr-2"
-              >
-                <Users className="h-4 w-4 mr-2" />
-                Gestionar Miembros
-              </Button>
-            </TableCell>
+    <>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Nombre del Grupo</TableHead>
+            <TableHead>Miembros</TableHead>
+            <TableHead>Fecha de Creación</TableHead>
+            <TableHead className="text-right">Acciones</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {groups?.map((group) => (
+            <TableRow key={group.id}>
+              <TableCell>{group.name}</TableCell>
+              <TableCell>{group.member_count.count} miembros</TableCell>
+              <TableCell>{new Date(group.created_at).toLocaleDateString()}</TableCell>
+              <TableCell className="text-right">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedGroup({ id: group.id, name: group.name })}
+                  className="mr-2"
+                >
+                  <Users className="h-4 w-4 mr-2" />
+                  Gestionar Miembros
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+
+      {selectedGroup && (
+        <ManageGroupMembersDialog
+          groupId={selectedGroup.id}
+          groupName={selectedGroup.name}
+          open={!!selectedGroup}
+          onOpenChange={(open) => !open && setSelectedGroup(null)}
+        />
+      )}
+    </>
   );
 };
