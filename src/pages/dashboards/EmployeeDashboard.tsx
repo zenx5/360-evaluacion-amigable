@@ -29,42 +29,27 @@ interface Group {
 const EmployeeDashboard = () => {
   const navigate = useNavigate();
 
-  // Verificar autenticación al cargar el componente y mantener la sesión actualizada
   useEffect(() => {
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT' || !session) {
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
         navigate('/');
       }
     });
 
-    // Cleanup subscription on unmount
     return () => subscription.unsubscribe();
   }, [navigate]);
 
   const { data: userGroups, isLoading: isLoadingGroups, error: groupsError } = useQuery({
     queryKey: ['user_groups'],
     queryFn: async () => {
-      // Primero verificamos si hay una sesión activa
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         navigate('/');
         throw new Error('No hay sesión activa');
       }
 
-      // Obtenemos primero los grupos a los que pertenece el usuario
-      const { data: memberGroups, error: memberError } = await supabase
-        .from('group_members')
-        .select('group_id')
-        .eq('user_id', user.id);
-
-      if (memberError) throw memberError;
-      if (!memberGroups?.length) return [];
-
-      const groupIds = memberGroups.map(gm => gm.group_id);
-
-      // Luego obtenemos los detalles completos de esos grupos
       const { data, error } = await supabase
         .from('employee_groups')
         .select(`
@@ -77,36 +62,36 @@ const EmployeeDashboard = () => {
             )
           )
         `)
-        .in('id', groupIds);
+        .returns<Group[]>();
 
-      if (error) throw error;
-      return (data || []) as Group[];
+      if (error) {
+        console.error('Error fetching groups:', error);
+        throw error;
+      }
+
+      return data || [];
     },
-    retry: 1,
     meta: {
       errorMessage: 'Error al cargar los grupos'
     }
   });
 
-  // Mutation para crear una nueva evaluación
   const createEvaluation = async (evaluatedId: string) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      toast.error('Sesión no encontrada');
-      navigate('/');
-      return;
-    }
-
     try {
-      const { data, error } = await supabase
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('Sesión no encontrada');
+        navigate('/');
+        return;
+      }
+
+      const { error } = await supabase
         .from('evaluations')
         .insert({
           evaluator_id: user.id,
           evaluated_id: evaluatedId,
           status: 'pending'
-        })
-        .select()
-        .single();
+        });
 
       if (error) throw error;
 
@@ -130,7 +115,6 @@ const EmployeeDashboard = () => {
   }
 
   if (groupsError) {
-    toast.error("Error al cargar los grupos");
     return <div className="container mx-auto p-8">Error al cargar los grupos.</div>;
   }
 
