@@ -33,7 +33,14 @@ export const EmployeeGroupList = () => {
         `);
       
       if (error) throw error;
-      return data as EmployeeGroup[];
+      
+      // Transformar los datos para que coincidan con la interfaz
+      return (data || []).map(group => ({
+        id: group.id,
+        name: group.name,
+        created_at: group.created_at,
+        member_count: { count: (group.member_count as any).count }
+      })) as EmployeeGroup[];
     }
   });
 
