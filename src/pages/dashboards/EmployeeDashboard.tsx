@@ -49,18 +49,7 @@ const EmployeeDashboard = () => {
         throw new Error('No session found');
       }
 
-      // Primero obtenemos los IDs de los grupos del usuario
-      const { data: groupMemberships, error: membershipError } = await supabase
-        .from('group_members')
-        .select('group_id')
-        .eq('user_id', session.user.id);
-
-      if (membershipError) throw membershipError;
-      if (!groupMemberships?.length) return [];
-
-      const groupIds = groupMemberships.map(gm => gm.group_id);
-
-      // Luego obtenemos los detalles de los grupos y sus miembros
+      // Primero obtenemos los detalles de los grupos y sus miembros directamente
       const { data, error } = await supabase
         .from('employee_groups')
         .select(`
@@ -72,19 +61,14 @@ const EmployeeDashboard = () => {
               full_name
             )
           )
-        `)
-        .in('id', groupIds);
+        `);
 
       if (error) throw error;
-      return data as Group[];
+      return (data || []) as Group[];
     },
-    retry: false,
-    onError: (error: Error) => {
-      if (error.message.includes('session')) {
-        navigate('/');
-      } else {
-        toast.error(`Error al cargar grupos: ${error.message}`);
-      }
+    retry: 1,
+    meta: {
+      errorMessage: 'Error al cargar los grupos'
     }
   });
 
@@ -132,6 +116,7 @@ const EmployeeDashboard = () => {
   }
 
   if (groupsError) {
+    toast.error("Error al cargar los grupos");
     return <div className="container mx-auto p-8">Error al cargar los grupos.</div>;
   }
 
