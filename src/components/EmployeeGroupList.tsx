@@ -10,15 +10,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Users, ClipboardList } from "lucide-react";
+import { ClipboardList } from "lucide-react";
 
 interface EmployeeGroup {
   id: string;
   name: string;
   created_at: string;
-  _count: {
-    members: number;
-  };
+  member_count: number;
 }
 
 export const EmployeeGroupList = ({ onEvaluate }: { onEvaluate: (groupId: string, groupName: string) => void }) => {
@@ -31,13 +29,15 @@ export const EmployeeGroupList = ({ onEvaluate }: { onEvaluate: (groupId: string
           id,
           name,
           created_at,
-          _count {
-            members: group_members(count)
-          }
+          member_count:group_members(count)
         `);
       
       if (error) throw error;
-      return data as EmployeeGroup[];
+      
+      return (data || []).map(group => ({
+        ...group,
+        member_count: group.member_count.count
+      })) as EmployeeGroup[];
     }
   });
 
@@ -57,7 +57,7 @@ export const EmployeeGroupList = ({ onEvaluate }: { onEvaluate: (groupId: string
         {groups?.map((group) => (
           <TableRow key={group.id}>
             <TableCell>{group.name}</TableCell>
-            <TableCell>{group._count.members} miembros</TableCell>
+            <TableCell>{group.member_count} miembros</TableCell>
             <TableCell>{new Date(group.created_at).toLocaleDateString()}</TableCell>
             <TableCell className="text-right">
               <Button
