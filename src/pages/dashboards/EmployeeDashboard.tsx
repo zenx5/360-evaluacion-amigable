@@ -29,27 +29,42 @@ interface Group {
 const EmployeeDashboard = () => {
   const navigate = useNavigate();
 
-  // Verificar autenticación al cargar el componente
+  // Verificar autenticación al cargar el componente y mantener la sesión actualizada
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
         navigate('/');
       }
-    };
+    });
 
-    checkAuth();
+    // Cleanup subscription on unmount
+    return () => subscription.unsubscribe();
   }, [navigate]);
 
   const { data: userGroups, isLoading: isLoadingGroups, error: groupsError } = useQuery({
     queryKey: ['user_groups'],
     queryFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('No session found');
+      // Primero verificamos si hay una sesión activa
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate('/');
+        throw new Error('No hay sesión activa');
       }
 
-      // Primero obtenemos los detalles de los grupos y sus miembros directamente
+      // Obtenemos primero los grupos a los que pertenece el usuario
+      const { data: memberGroups, error: memberError } = await supabase
+        .from('group_members')
+        .select('group_id')
+        .eq('user_id', user.id);
+
+      if (memberError) throw memberError;
+      if (!memberGroups?.length) return [];
+
+      const groupIds = memberGroups.map(gm => gm.group_id);
+
+      // Luego obtenemos los detalles completos de esos grupos
       const { data, error } = await supabase
         .from('employee_groups')
         .select(`
@@ -61,7 +76,8 @@ const EmployeeDashboard = () => {
               full_name
             )
           )
-        `);
+        `)
+        .in('id', groupIds);
 
       if (error) throw error;
       return (data || []) as Group[];
@@ -74,8 +90,8 @@ const EmployeeDashboard = () => {
 
   // Mutation para crear una nueva evaluación
   const createEvaluation = async (evaluatedId: string) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
       toast.error('Sesión no encontrada');
       navigate('/');
       return;
@@ -85,7 +101,7 @@ const EmployeeDashboard = () => {
       const { data, error } = await supabase
         .from('evaluations')
         .insert({
-          evaluator_id: session.user.id,
+          evaluator_id: user.id,
           evaluated_id: evaluatedId,
           status: 'pending'
         })
@@ -95,8 +111,6 @@ const EmployeeDashboard = () => {
       if (error) throw error;
 
       toast.success('Evaluación creada exitosamente');
-      // Aquí podrías redirigir al usuario a la página de evaluación
-      // navigate(`/evaluation/${data.id}`);
     } catch (error: any) {
       toast.error('Error al crear la evaluación: ' + error.message);
     }
