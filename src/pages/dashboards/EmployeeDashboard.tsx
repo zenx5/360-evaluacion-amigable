@@ -1,4 +1,5 @@
 
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -28,12 +29,38 @@ interface Group {
 const EmployeeDashboard = () => {
   const navigate = useNavigate();
 
-  const { data: userGroups, isLoading: isLoadingGroups } = useQuery({
+  // Verificar autenticación al cargar el componente
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        navigate('/');
+      }
+    };
+
+    checkAuth();
+  }, [navigate]);
+
+  const { data: userGroups, isLoading: isLoadingGroups, error: groupsError } = useQuery({
     queryKey: ['user_groups'],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('No user found');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No session found');
+      }
 
+      // Primero obtenemos los IDs de los grupos del usuario
+      const { data: groupMemberships, error: membershipError } = await supabase
+        .from('group_members')
+        .select('group_id')
+        .eq('user_id', session.user.id);
+
+      if (membershipError) throw membershipError;
+      if (!groupMemberships?.length) return [];
+
+      const groupIds = groupMemberships.map(gm => gm.group_id);
+
+      // Luego obtenemos los detalles de los grupos y sus miembros
       const { data, error } = await supabase
         .from('employee_groups')
         .select(`
@@ -46,23 +73,27 @@ const EmployeeDashboard = () => {
             )
           )
         `)
-        .in('id', (
-          supabase
-            .from('group_members')
-            .select('group_id')
-            .eq('user_id', user.id)
-        ));
+        .in('id', groupIds);
 
       if (error) throw error;
       return data as Group[];
+    },
+    retry: false,
+    onError: (error: Error) => {
+      if (error.message.includes('session')) {
+        navigate('/');
+      } else {
+        toast.error(`Error al cargar grupos: ${error.message}`);
+      }
     }
   });
 
   // Mutation para crear una nueva evaluación
   const createEvaluation = async (evaluatedId: string) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      toast.error('Usuario no encontrado');
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      toast.error('Sesión no encontrada');
+      navigate('/');
       return;
     }
 
@@ -70,7 +101,7 @@ const EmployeeDashboard = () => {
       const { data, error } = await supabase
         .from('evaluations')
         .insert({
-          evaluator_id: user.id,
+          evaluator_id: session.user.id,
           evaluated_id: evaluatedId,
           status: 'pending'
         })
@@ -100,6 +131,10 @@ const EmployeeDashboard = () => {
     return <div className="container mx-auto p-8">Cargando grupos...</div>;
   }
 
+  if (groupsError) {
+    return <div className="container mx-auto p-8">Error al cargar los grupos.</div>;
+  }
+
   return (
     <div className="container mx-auto p-8">
       <div className="flex justify-between items-center mb-8">
@@ -113,11 +148,11 @@ const EmployeeDashboard = () => {
       <div className="grid gap-6">
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold mb-4">Mis Grupos</h2>
-          {userGroups?.length === 0 ? (
+          {!userGroups?.length ? (
             <p className="text-gray-500">No perteneces a ningún grupo todavía.</p>
           ) : (
             <Accordion type="single" collapsible className="w-full">
-              {userGroups?.map((group) => (
+              {userGroups.map((group) => (
                 <AccordionItem key={group.id} value={group.id}>
                   <AccordionTrigger className="text-lg font-medium">
                     {group.name}
