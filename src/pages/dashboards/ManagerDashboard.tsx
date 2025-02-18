@@ -21,11 +21,6 @@ const ManagerDashboard = () => {
     }
   };
 
-  const handleEvaluateGroup = (groupId: string, groupName: string) => {
-    // Aquí implementaremos la lógica para crear evaluaciones para el grupo
-    toast.info(`Próximamente: Crear evaluación para ${groupName}`);
-  };
-
   return (
     <div className="container mx-auto p-8">
       <div className="flex justify-between items-center mb-8">
@@ -42,7 +37,7 @@ const ManagerDashboard = () => {
             <h2 className="text-xl font-semibold">Grupos de Empleados</h2>
             <CreateGroupDialog />
           </div>
-          <EmployeeGroupList onEvaluate={handleEvaluateGroup} />
+          <EmployeeGroupList />
         </div>
 
         <div className="bg-white rounded-lg shadow p-6">

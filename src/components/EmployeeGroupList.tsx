@@ -10,16 +10,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { ClipboardList } from "lucide-react";
+import { Users } from "lucide-react";
 
 interface EmployeeGroup {
   id: string;
   name: string;
   created_at: string;
-  member_count: number;
+  member_count: { count: number };
 }
 
-export const EmployeeGroupList = ({ onEvaluate }: { onEvaluate: (groupId: string, groupName: string) => void }) => {
+export const EmployeeGroupList = () => {
   const { data: groups, isLoading } = useQuery({
     queryKey: ['employee_groups'],
     queryFn: async () => {
@@ -33,11 +33,7 @@ export const EmployeeGroupList = ({ onEvaluate }: { onEvaluate: (groupId: string
         `);
       
       if (error) throw error;
-      
-      return (data || []).map(group => ({
-        ...group,
-        member_count: group.member_count.count
-      })) as EmployeeGroup[];
+      return data as EmployeeGroup[];
     }
   });
 
@@ -57,17 +53,18 @@ export const EmployeeGroupList = ({ onEvaluate }: { onEvaluate: (groupId: string
         {groups?.map((group) => (
           <TableRow key={group.id}>
             <TableCell>{group.name}</TableCell>
-            <TableCell>{group.member_count} miembros</TableCell>
+            <TableCell>{group.member_count.count} miembros</TableCell>
             <TableCell>{new Date(group.created_at).toLocaleDateString()}</TableCell>
             <TableCell className="text-right">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => onEvaluate(group.id, group.name)}
+                // Aquí después implementaremos la gestión de miembros
+                onClick={() => {}}
                 className="mr-2"
               >
-                <ClipboardList className="h-4 w-4 mr-2" />
-                Evaluar
+                <Users className="h-4 w-4 mr-2" />
+                Gestionar Miembros
               </Button>
             </TableCell>
           </TableRow>
