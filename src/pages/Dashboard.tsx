@@ -1,8 +1,6 @@
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import AdminDashboard from "./dashboards/AdminDashboard";
 import ManagerDashboard from "./dashboards/ManagerDashboard";
 import EmployeeDashboard from "./dashboards/EmployeeDashboard";
@@ -10,30 +8,19 @@ import { toast } from "sonner";
 
 const Dashboard = () => {
   const navigate = useNavigate();
-
-  const { data: profile, isLoading } = useQuery({
-    queryKey: ['profile'],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('No user found');
-
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-
-      if (error) throw error;
-      return data;
-    }
-  });
+  const [profile, setProfile] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const user = JSON.parse( sessionStorage.getItem('user--data') )
+
+      if (!user) {
         navigate('/');
       }
+      console.log( user )
+      setProfile( user )
+      setIsLoading( false )
     };
 
     checkAuth();
@@ -49,11 +36,11 @@ const Dashboard = () => {
 
   switch (profile.role) {
     case 'admin':
-      return <AdminDashboard />;
+      return "<AdminDashboard />";
     case 'manager':
-      return <ManagerDashboard />;
+      return <ManagerDashboard  profileId={profile.id} profileName={profile.full_name} />;
     case 'employee':
-      return <EmployeeDashboard />;
+      return <EmployeeDashboard profileId={profile.id} profileName={profile.full_name} />;
     default:
       toast.error("Rol no válido");
       return null;

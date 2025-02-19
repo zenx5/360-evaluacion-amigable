@@ -39,23 +39,17 @@ export const EmployeeGroupList = () => {
   const { data: groups, isLoading } = useQuery({
     queryKey: ['employee_groups'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('employee_groups')
-        .select(`
-          id,
-          name,
-          created_at,
-          member_count:group_members(count)
-        `);
-      
+      // employee_groups
+      const { data, error } = await supabase.from('employee_groups').select('*');
+      console.log( data, error )
       if (error) throw error;
       
-      return (data || []).map(group => ({
-        id: group.id,
-        name: group.name,
-        created_at: group.created_at,
-        member_count: { count: (group.member_count as any).count }
-      })) as EmployeeGroup[];
+      // return (data || []).map(group => ({
+      //   id: group.id,
+      //   name: group.name,
+      //   created_at: group.created_at,
+      //   member_count: { count: 0 }
+      // })) as EmployeeGroup[];
     }
   });
 
