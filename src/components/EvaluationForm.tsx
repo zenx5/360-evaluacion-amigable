@@ -13,8 +13,6 @@ import { toast } from "sonner";
 import { X } from "lucide-react";
 
 interface EvaluationFormProps {
-  userId: string;
-  userName: string;
   onClose: () => void;
 }
 
@@ -26,7 +24,7 @@ const QUESTIONS = [
   "¿Qué tan bien maneja las situaciones de presión?"
 ];
 
-export const EvaluationForm = ({ userId, userName, onClose }: EvaluationFormProps) => {
+export const EvaluationForm = ({ onClose }: EvaluationFormProps) => {
   const [responses, setResponses] = useState<Record<string, { score: string; response: string }>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const queryClient = useQueryClient();
@@ -35,53 +33,14 @@ export const EvaluationForm = ({ userId, userName, onClose }: EvaluationFormProp
     e.preventDefault();
     setIsSubmitting(true);
 
-    try {
-      // Create evaluation
-      const { data: evaluation, error: evalError } = await supabase
-        .from('evaluations')
-        .insert([
-          { evaluated_id: userId, evaluator_id: (await supabase.auth.getUser()).data.user?.id }
-        ])
-        .select()
-        .single();
-
-      if (evalError) throw evalError;
-
-      // Create responses
-      const responsesData = QUESTIONS.map((question) => ({
-        evaluation_id: evaluation.id,
-        question_text: question,
-        score: parseInt(responses[question]?.score || "1"),
-        response: responses[question]?.response || ""
-      }));
-
-      const { error: respError } = await supabase
-        .from('evaluation_responses')
-        .insert(responsesData);
-
-      if (respError) throw respError;
-
-      // Update evaluation status
-      await supabase
-        .from('evaluations')
-        .update({ status: 'completed' })
-        .eq('id', evaluation.id);
-
-      toast.success("Evaluación enviada con éxito");
-      queryClient.invalidateQueries({ queryKey: ['evaluations'] });
-      onClose();
-    } catch (error: any) {
-      toast.error(error.message);
-    } finally {
-      setIsSubmitting(false);
-    }
+    if(onClose) onClose()
   };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">Evaluar a {userName}</h2>
+          <h2 className="text-2xl font-bold">Evaluar a {"userName"}</h2>
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="h-4 w-4" />
           </Button>

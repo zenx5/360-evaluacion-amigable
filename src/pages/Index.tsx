@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { LogIn, UserPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import Profile from "@/integrations/firebase/models/Profile";
 
 const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -33,12 +34,11 @@ const Index = () => {
     const password = formData.get('password') as string;
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
+      const { data, error } = await Profile.signInWithPassword(email, password);
 
       if (error) throw error;
+
+      sessionStorage.setItem('user--data', JSON.stringify(data) )
 
       toast.success("¡Bienvenido de vuelta!");
       navigate('/dashboard');
@@ -59,19 +59,11 @@ const Index = () => {
     const password = formData.get('register-password') as string;
 
     try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName
-          }
-        }
-      });
+      const { error, data } = await Profile.register( email, password, fullName)
 
       if (error) throw error;
 
-      toast.success("¡Registro exitoso! Por favor verifica tu correo electrónico.");
+      toast.success("¡Registro exitoso!");
     } catch (error: any) {
       toast.error(error.message || "Error al registrarse");
     } finally {

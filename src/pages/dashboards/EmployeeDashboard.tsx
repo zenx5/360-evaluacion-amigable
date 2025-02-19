@@ -1,7 +1,5 @@
 
-import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { LogOut, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
@@ -12,6 +10,9 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { EvaluationForm } from "@/components/EvaluationForm";
+import Profile from "@/integrations/firebase/models/Profile";
+import Evaluation from "@/integrations/firebase/models/Evaluation";
 
 interface GroupMember {
   profiles: {
@@ -26,96 +27,41 @@ interface Group {
   members: GroupMember[];
 }
 
-const EmployeeDashboard = () => {
+const EmployeeDashboard = ({ profileId, profileName }) => {
   const navigate = useNavigate();
+  const [open, setOpen] = useState<string|null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isError, setIsError] = useState(false)
+  const [evaluation, setEvaluation] = useState(null)
+  const [userGroups, setUserGroups] = useState([])
 
   useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) {
-        navigate('/');
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    if( profileId) {
+      Profile.onSnapDetailed( data => {
+        setUserGroups( data?.groups ?? [])
+        setIsLoading( false )
+      }, profileId)
+    }
   }, [navigate]);
 
-  const { data: userGroups, isLoading: isLoadingGroups, error: groupsError } = useQuery({
-    queryKey: ['user_groups'],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate('/');
-        throw new Error('No hay sesión activa');
-      }
-
-      const { data, error } = await supabase
-        .from('employee_groups')
-        .select(`
-          id,
-          name,
-          members:group_members(
-            profiles(
-              id,
-              full_name
-            )
-          )
-        `)
-        .returns<Group[]>();
-
-      if (error) {
-        console.error('Error fetching groups:', error);
-        throw error;
-      }
-
-      return data || [];
-    },
-    meta: {
-      errorMessage: 'Error al cargar los grupos'
-    }
-  });
-
-  const createEvaluation = async (evaluatedId: string) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error('Sesión no encontrada');
-        navigate('/');
-        return;
-      }
-
-      const { error } = await supabase
-        .from('evaluations')
-        .insert({
-          evaluator_id: user.id,
-          evaluated_id: evaluatedId,
-          status: 'pending'
-        });
-
-      if (error) throw error;
-
-      toast.success('Evaluación creada exitosamente');
-    } catch (error: any) {
-      toast.error('Error al crear la evaluación: ' + error.message);
-    }
-  };
+  
 
   const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      toast.error(error.message);
-    } else {
-      navigate('/');
-    }
+    sessionStorage.removeItem('user--data')
+    navigate("/")
   };
 
-  if (isLoadingGroups) {
+  if (isLoading) {
     return <div className="container mx-auto p-8">Cargando grupos...</div>;
   }
 
-  if (groupsError) {
+  if (isError) {
+    toast.error("Error al cargar los grupos");
     return <div className="container mx-auto p-8">Error al cargar los grupos.</div>;
+  }
+
+  const handleOpen = (data) => {
+    setEvaluation( data )
   }
 
   return (
@@ -127,7 +73,7 @@ const EmployeeDashboard = () => {
           Cerrar Sesión
         </Button>
       </div>
-
+      { evaluation && <EvaluationForm onClose={()=>{setEvaluation(null)}} />}
       <div className="grid gap-6">
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold mb-4">Mis Grupos</h2>
@@ -144,22 +90,7 @@ const EmployeeDashboard = () => {
                     <div className="space-y-4 pl-4">
                       <h3 className="font-medium text-gray-700">Miembros del grupo:</h3>
                       <div className="grid gap-3">
-                        {group.members.map(({ profiles: member }) => (
-                          <div
-                            key={member.id}
-                            className="flex items-center justify-between bg-gray-50 p-3 rounded-md"
-                          >
-                            <span>{member.full_name}</span>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => createEvaluation(member.id)}
-                            >
-                              <ClipboardList className="h-4 w-4 mr-2" />
-                              Evaluar
-                            </Button>
-                          </div>
-                        ))}
+                        {group.members.map((profileId) => <Member profileId={profileId} groupId={group.id} onOpen={handleOpen}/> )}
                       </div>
                     </div>
                   </AccordionContent>
@@ -172,5 +103,51 @@ const EmployeeDashboard = () => {
     </div>
   );
 };
+
+function Member({ profileId, groupId, onOpen }:{ profileId:string, groupId:string, onOpen?:(data)=>void }) {
+  const [member, setMember] = useState<{ full_name:string, id:string }>()
+  useEffect(()=>{
+    Profile.onSnap( data =>  {
+      setMember(data)
+    }, profileId)
+
+  },[profileId])
+
+  const createEvaluation = async () => {
+    const user = JSON.parse( sessionStorage.getItem('user--data') )
+    if( !user ) {
+      toast.success('Session expirada');
+    }
+
+    try {
+
+      const { error, data } = await Evaluation.create(user.id, profileId, groupId)
+      
+      if (error) throw error;
+
+      toast.success('Evaluación creada exitosamente');
+      if(onOpen) onOpen(data)
+    } catch (error: any) {
+      toast.error('Error al crear la evaluación: ' + error.message);
+    }
+  };
+
+  return (
+    <div
+      key={profileId}
+      className="flex items-center justify-between bg-gray-50 p-3 rounded-md"
+    >
+      <span>{member?.full_name}</span>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={createEvaluation}
+      >
+        <ClipboardList className="h-4 w-4 mr-2" />
+        Evaluar
+      </Button>
+    </div>
+  )
+}
 
 export default EmployeeDashboard;

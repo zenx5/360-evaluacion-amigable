@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { ClipboardList } from "lucide-react";
+import { useEffect, useState } from "react";
+import Profile from "@/integrations/firebase/models/Profile";
 
 interface Profile {
   id: string;
@@ -18,17 +20,15 @@ interface Profile {
 }
 
 export const UserList = ({ onEvaluate }: { onEvaluate: (userId: string, userName: string) => void }) => {
-  const { data: profiles, isLoading } = useQuery({
-    queryKey: ['profiles'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, full_name');
-      
-      if (error) throw error;
-      return data as Profile[];
-    }
-  });
+  const [profiles, setProfiles] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(()=>{
+    Profile.get().then( data => {
+      setProfiles(data)
+      setIsLoading(false)
+    } )
+  },[])
 
   if (isLoading) return <div>Cargando usuarios...</div>;
 

@@ -9,7 +9,7 @@ import { LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
-const ManagerDashboard = () => {
+const ManagerDashboard = ({ profileId, profileName }) => {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
